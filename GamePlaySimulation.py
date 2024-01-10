@@ -74,3 +74,4 @@ total_row_fixed = {
 }
 
 df_game_results_with_total_fixed = df_game_results.append(total_row_fixed, ignore_index=True)
+
