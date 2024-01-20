@@ -1,2 +1,2 @@
-python3 ./GamePlaySimulation2.py
+python3 ./GamePlaySimulation.py
 python3 ./PlayDataSummary.py

@@ -8,7 +8,7 @@ config.dictConfig(log_conf)
 logger = getLogger(__name__)
 
 player = 1000
-play_fee = 3 # $
+play_fee = 2 # $
 operation_fee = 0.1
 play_count = 20
 month = 30
