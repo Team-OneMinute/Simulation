@@ -29,19 +29,23 @@ bet_amount = 1  # $
 # ランキングと報酬の設定
 management_distribution = 0.1 # 運営Fee
 management_pool = 0 # 運営の獲得プール
-ranking_pools = [0, 0, 0, 0, 0]  # ランキングプール　初期はLength 1　ランキングが更新される度にaddされる
+ranking_pools = []  # ランキングプール　初期はLength 1　ランキングが更新される度にaddされる
 
-# ランキングの分配率
+# ランキングの設定
+# 最初に開放しておくランキングの個数
+# 0.25の場合、初期ユーザ(limit_num)の25%分のランキングが開放されている
+default_ranking_rate = 0.25
+
 # ランキング１位が更新されるたびに次のランキングプールが開放される
 ranking_distribution = []
-current_ranking = [0, 0, 0, 0, 0]  # 現在のランキングスコア
+current_ranking = []  # 現在のランキングスコア
 total_player_earnings = 0
 
 # ユニークユーザ数
 active_user = 0
 
 # 集計用データ
-count_update_ranking = [0, 0, 0, 0, 0]
+count_update_ranking = []
 total_bet_amount = 0
 update_ranking_user = []
 
@@ -83,16 +87,23 @@ def distribute_bet_to_pools(management_pool, ranking_pools, bet_amount):
             # 1位に溜まっているプールと比率を掛けて、現在のランキングに溜まっておくべき金額を算出
             expected_amount = ranking_pools[0] * ratio
 
-            # 現在のプールと比較し、補填が必要な場合は補填金額を計算
-            if ranking_pools[i] < expected_amount:
+            # 補填金額
+            compensation_amount = expected_amount - ranking_pools[i]
+
+            # 補填金額が必要な場合
+            if compensation_amount > 0:
                 # 補填金額が１回のBetで足りない
-                if surplus_amount - expected_amount < 0:
+                # surplus_amount(ユーザの残りBet金額):0.9 expected_amount（貯まっておくべき金額）:100
+                if surplus_amount < compensation_amount:
                     ranking_pools[i] += surplus_amount
+                    surplus_amount = 0
                     break
                 # 補填金額が１回のBetで足りる
+                # surplus_amount(ユーザの残りBet金額):0.2 expected_amount（貯まっておくべき金額）:0.1
                 else:
-                    surplus_amount -= expected_amount
-                    ranking_pools[i] += expected_amount
+                    ranking_pools[i] += compensation_amount
+                    # bet金額から補填した金額を減らす
+                    surplus_amount -= compensation_amount
 
     # ランキングプールの分配
     if surplus_amount > 0:
@@ -224,7 +235,8 @@ def integrand(x, A, B):
 def equation(p, max_rank):
     A, B = p
     integral, _ = quad(integrand, 1, max_rank, args=(A, B))
-    return (integral - 1, 0)
+    rank1_reward = A * math.exp(-B * 1) - 0.30  # 最高ランクの報酬率を30%に設定
+    return (integral - 1, rank1_reward)
 
 def calculateAB(max_rank):
     initial_guess = (1, 0.1)
@@ -235,6 +247,11 @@ def getRewardDistribution(max_rank):
     A, B = calculateAB(max_rank)
     rewards = [A * math.exp(-B * x) for x in range(1, max_rank + 1)]
     return rewards
+
+def normalizeRewards(rewards):
+    total = sum(rewards)
+    normalized_rewards = [r / total for r in rewards]
+    return normalized_rewards
 
 def chek_round():
     # ゲーム参加人数
@@ -268,8 +285,15 @@ for i in range(limit_num):
     player_available[i] = True
 
 # 分配率の初期値
-ranking_distribution = getRewardDistribution(len(ranking_pools))
-counter = 1
+reward_distribution = getRewardDistribution(len(ranking_pools))
+ranking_distribution = normalizeRewards(reward_distribution)
+
+# 開始人数に応じてプールの初期値を設定
+for i in range(int(limit_num * default_ranking_rate)):
+    ranking_pools.append(0)
+    current_ranking.append(0)
+    count_update_ranking.append(0)
+
 while sum(play_counter.values()) > 0:
     # playerの参加不参加を判定
     judge_player(ranking_pools, player_available, range_add_player)
@@ -322,7 +346,6 @@ while sum(play_counter.values()) > 0:
                     count_update_ranking[i] += 1
 
                     break
-    counter += 1
 
 # 集計
 # ゲームに参加できなかった人数
@@ -341,12 +364,14 @@ output_path = Path("SimulationOutPut/playData_flexibleRanking_uu.csv")
 results.to_csv(output_path, index=False)
 
 output_path.resolve()
-print("update count: " + str(count_update_ranking))
 print("ranking num: " + str(len(count_update_ranking)))
 print("not join num: " + str(not_available_num))
 print("residue count: " + str(residue_play_count))
 print("sum residue pools: " + str(sum(ranking_pools)))
+print("user earn:" + str(total_player_earnings))
 print("update ranking count: " + str(sum(count_update_ranking)))
 print("total_bet_amount: " + str(total_bet_amount))
+print("total_bet_amount * 0.9: " + str(total_bet_amount* 0.9))
 print("total_management_amount: " + str(total_bet_amount * management_distribution) + "$")
 print("ranking update unique user:" + str(len(set(update_ranking_user))))
+
