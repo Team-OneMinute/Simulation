@@ -21,7 +21,7 @@ max_score = 65536  # 最大スコア
 limit_num = 100
 limit_pool_size = 100
 # ランキング戦に何人ずつ追加するか
-range_add_player = 10
+range_add_player = 50
 
 # bet金額
 bet_amount = 1  # $
@@ -69,7 +69,6 @@ def distribute_bet_to_pools(management_pool, ranking_pools, bet_amount):
     Betの分配
     運営プールとランキングプールに分配を行う
     """
-    reward_distribution = getRewardDistribution(len(ranking_pools))
     # 運営プールの更新
     management_pool += bet_amount * management_distribution
     # 補填金額残金（補填金額が0.1のとき、過剰に補填してしまうため0.1を補填した後残りのBet金額を分配する）
@@ -83,7 +82,7 @@ def distribute_bet_to_pools(management_pool, ranking_pools, bet_amount):
     if len(ranking_pools) != 1:
         for i in range(1, len(ranking_pools)):
             # 1位と現在のランキングの分配率から比率を計算
-            ratio = reward_distribution[i] / reward_distribution[0]
+            ratio = ranking_distribution[i] / ranking_distribution[0]
             # 1位に溜まっているプールと比率を掛けて、現在のランキングに溜まっておくべき金額を算出
             expected_amount = ranking_pools[0] * ratio
 
@@ -108,7 +107,7 @@ def distribute_bet_to_pools(management_pool, ranking_pools, bet_amount):
     # ランキングプールの分配
     if surplus_amount > 0:
         for i in range(len(ranking_pools)):
-            ranking_pools[i] += surplus_amount * reward_distribution[i]
+            ranking_pools[i] += surplus_amount * ranking_distribution[i]
 
 def update_ranking_score(current_ranking, score):
     """
@@ -232,9 +231,9 @@ def resize_pool(new_active_user_count):
 
     while compensation_ranking > 0:
         add_pool_size()
-        expected_ranking_num -= 1
+        compensation_ranking -= 1
 
-    update_distribution(ranking_distribution)
+    update_distribution()
 
 def add_pool_size():
     ranking_pools.append(0)
@@ -243,10 +242,10 @@ def add_pool_size():
     ranking_distribution.append(0)
     previous_pools.append(0)
 
-def update_distribution(ranking_distribution):
+def update_distribution():
+    global ranking_distribution
     reward_distribution = getRewardDistribution(len(ranking_pools))
     ranking_distribution = normalizeRewards(reward_distribution)
-    return ranking_distribution
 
 def find_first_false_index(my_dict):
     # 辞書の各要素（キーと値）を順番にチェック

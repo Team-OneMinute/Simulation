@@ -62,7 +62,7 @@ def update_pool(ranking_pools, updated_rank):
     ranking_pools[len(ranking_pools) - 1] = 0
     return ranking_pools
 
-def distribute_bet_to_pools(management_pool, ranking_pools, bet_amount, distribution):
+def distribute_bet_to_pools(management_pool, ranking_pools, bet_amount):
     """
     Betの分配
     運営プールとランキングプールに分配を行う
@@ -102,7 +102,7 @@ def distribute_bet_to_pools(management_pool, ranking_pools, bet_amount, distribu
     # ランキングプールの分配
     if surplus_amount > 0:
         for i in range(len(ranking_pools)):
-            ranking_pools[i] += surplus_amount * distribution[i]
+            ranking_pools[i] += surplus_amount * ranking_distribution[i]
 
 def update_ranking_score(current_ranking, score):
     """
@@ -205,7 +205,7 @@ while sum(play_counter.values()) > 0:
         if bet_check(player_id, ranking_pools, bet_judge):
             # 運営プールとランキングプールへのBetの分配
             total_bet_amount += 1
-            distribute_bet_to_pools(management_pool, ranking_pools, bet_amount, ranking_distribution)
+            distribute_bet_to_pools(management_pool, ranking_pools, bet_amount)
             play_counter[player_id] -= 1
             # スコアの決定
             score = random.randint(min_score, max_score)
