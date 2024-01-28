@@ -20,7 +20,7 @@ max_score = 65536  # 最大スコア
 # 加熱度パラメータ bet金額がlimit_pool_size貯まったら全員参加させる。それ以外はlimit_numだけが参加
 limit_num = 100
 limit_pool_size = 100
-# ランキング戦に参加する人数のレンジ
+# ランキング戦に何人ずつ追加するか
 range_add_player = 10
 
 # bet金額
@@ -196,29 +196,57 @@ def judge_player(ranking_pools, player_available, range_add_player):
     先頭のlimit_num以下は無条件参加
     limit_numより大きい参加者はプールが閾値以上たまっている場合、range_add_playerずつ参加
     """
-    true_count = sum(value for value in player_available.values())
+    # 現時点の参加している人数
+    active_user_count = sum(value for value in player_available.values())
+
+    # ランキングプールの中で１つでも閾値を超えている場合、参加ユーザを追加していく
     if any(pool >= limit_pool_size for pool in ranking_pools):
         index = find_first_false_index(player_available)
 
         # 全てのプレイヤーが参加状態
         if index is None:
             None
-        elif true_count + range_add_player > player_count:
-            for i in range(player_count - true_count):
+        # ユーザの追加 全体のプレイヤー数より、追加しようとしている人数か多い場合の考慮
+        elif active_user_count + range_add_player > player_count:
+            for i in range(player_count - active_user_count):
                 player_available[index + i] = True
-            ranking_pools.append(0)
-            current_ranking.append(0)
-            count_update_ranking.append(0)
-            ranking_distribution.append(0)
-            previous_pools.append(0)
+        # ユーザの追加
         else:
             for i in range(range_add_player):
                 player_available[index + i] = True
-            ranking_pools.append(0)
-            current_ranking.append(0)
-            count_update_ranking.append(0)
-            ranking_distribution.append(0)
-            previous_pools.append(0)
+
+        new_active_user_count = sum(value for value in player_available.values())
+        resize_pool(new_active_user_count)
+
+def resize_pool(new_active_user_count):
+    """
+    poolのサイズをプレイヤー人数に応じて増減させる
+    :return:
+    """
+    # TODO poolの減算ロジック
+
+    # 現在の参加人数で開放されておくべきランキング数
+    expected_ranking_num = int(new_active_user_count * default_ranking_rate)
+    # 追加が必要なランキングの個数
+    compensation_ranking = expected_ranking_num - len(ranking_pools)
+
+    while compensation_ranking > 0:
+        add_pool_size()
+        expected_ranking_num -= 1
+
+    update_distribution(ranking_distribution)
+
+def add_pool_size():
+    ranking_pools.append(0)
+    current_ranking.append(0)
+    count_update_ranking.append(0)
+    ranking_distribution.append(0)
+    previous_pools.append(0)
+
+def update_distribution(ranking_distribution):
+    reward_distribution = getRewardDistribution(len(ranking_pools))
+    ranking_distribution = normalizeRewards(reward_distribution)
+    return ranking_distribution
 
 def find_first_false_index(my_dict):
     # 辞書の各要素（キーと値）を順番にチェック
@@ -284,15 +312,15 @@ for key in range(player_count):
 for i in range(limit_num):
     player_available[i] = True
 
-# 分配率の初期値
-reward_distribution = getRewardDistribution(len(ranking_pools))
-ranking_distribution = normalizeRewards(reward_distribution)
-
 # 開始人数に応じてプールの初期値を設定
 for i in range(int(limit_num * default_ranking_rate)):
     ranking_pools.append(0)
     current_ranking.append(0)
     count_update_ranking.append(0)
+
+# 分配率の初期値
+reward_distribution = getRewardDistribution(len(ranking_pools))
+ranking_distribution = normalizeRewards(reward_distribution)
 
 while sum(play_counter.values()) > 0:
     # playerの参加不参加を判定
