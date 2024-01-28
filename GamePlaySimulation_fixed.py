@@ -180,7 +180,7 @@ for player_id in range(1, player_count + 1):
 
 # 結果をTSVファイルに書き込む
 #output_path = Path("/mnt/data/simulation_results.tsv")
-output_path = Path("SimulationOutPut/playData.csv")
+output_path = Path("SimulationOutPut/playData_fixed.csv")
 with output_path.open("w", newline='', encoding='utf-8') as file:
     writer = csv.writer(file, delimiter=',')
     headers = [
