@@ -7,6 +7,8 @@ import math
 from scipy.optimize import fsolve
 from scipy.integrate import quad
 
+import flexible_ranking_distribution
+
 """
 ランキング変動型シミュレーション
 ユニークユーザ数がふえる度にランキングが開放される。
@@ -318,8 +320,9 @@ for i in range(int(limit_num * default_ranking_rate)):
     count_update_ranking.append(0)
 
 # 分配率の初期値
-reward_distribution = getRewardDistribution(len(ranking_pools))
-ranking_distribution = normalizeRewards(reward_distribution)
+# reward_distribution = getRewardDistribution(len(ranking_pools))
+# ranking_distribution = normalizeRewards(reward_distribution)
+ranking_distribution = flexible_ranking_distribution.getRecursiveDistribution(len(ranking_pools))
 
 while sum(play_counter.values()) > 0:
     # playerの参加不参加を判定

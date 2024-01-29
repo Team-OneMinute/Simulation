@@ -9,15 +9,15 @@ import csv
 # output_file_path = './SimulationOutPut/playDataSummary_fixed.csv'
 
 ## 固定ランキング long pool
-file_path = './SimulationOutPut/playData_fixed_longpool.csv'
-output_file_path = './SimulationOutPut/playDataSummary_fixed_longpool.csv'
+# file_path = './SimulationOutPut/playData_fixed_longpool.csv'
+# output_file_path = './SimulationOutPut/playDataSummary_fixed_longpool.csv'
 
 # 1位更新時ランキング変動シミュレータ用
 #output_file_path = './SimulationOutPut/playDataSummary_flexibleRanking_top_score.csv.csv'
 
 ## 1位更新時ランキング変動シミュレータ用
-# file_path = './SimulationOutPut/playData_flexibleRanking_uu.csv'
-# output_file_path = './SimulationOutPut/playDataSummary_flexibleRanking_uu.csv'
+file_path = './SimulationOutPut/playData_flexibleRanking_uu.csv'
+output_file_path = './SimulationOutPut/playDataSummary_flexibleRanking_uu.csv'
 
 data = pd.read_csv(file_path)
 
