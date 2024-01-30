@@ -1,3 +1,4 @@
+## TODO: 未移行なので移行する
 def adjust_active_player(ranking_pools, player_available, range_add_player, limit_pool_size, player_count):
     """
     先頭のlimit_num以下は無条件参加
