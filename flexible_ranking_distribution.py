@@ -38,6 +38,11 @@ def getRecursiveDistribution(ranking_num, top_percentage=0.1, middle_percentage=
     return normalized_distribution
 
 # Example: Calculate the recursive distribution for 25 available rankings
-recursive_distribution_example = getRecursiveDistribution(100)
+# recursive_distribution_example = getRecursiveDistribution(100)
 
+# pool = 10000
+# result = []
+# for i in range(len(recursive_distribution_example)):
+#     result.append(recursive_distribution_example[i] * pool)
+# print("result: " + str(result))
 
