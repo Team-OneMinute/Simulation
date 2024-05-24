@@ -7,6 +7,8 @@ import math
 from scipy.optimize import fsolve
 from scipy.integrate import quad
 
+import flexible_ranking_distribution
+
 """
 ランキング変動型シミュレーション
 ユニークユーザ数がふえる度にランキングが開放される。
@@ -34,7 +36,7 @@ ranking_pools = []  # ランキングプール　初期はLength 1　ランキ�
 # ランキングの設定
 # 最初に開放しておくランキングの個数
 # 0.25の場合、初期ユーザ(limit_num)の25%分のランキングが開放されている
-default_ranking_rate = 0.25
+default_ranking_rate = 0.4
 
 # ランキング１位が更新されるたびに次のランキングプールが開放される
 ranking_distribution = []
@@ -44,10 +46,20 @@ total_player_earnings = 0
 # ユニークユーザ数
 active_user = 0
 
+# 最低獲得金額
+min_default_amount = 2
+
 # 集計用データ
 count_update_ranking = []
 total_bet_amount = 0
 update_ranking_user = []
+player_result_win_lose = []
+for i in range(player_count):
+    # [bet金額, 合計獲得金額, ランキング更新回数]
+    player_result_win_lose.append([0, 0, 0])
+
+# 運営がbotに入れた合計金額
+management_pay = 0
 
 def update_pool(ranking_pools, updated_rank):
     """
@@ -57,11 +69,13 @@ def update_pool(ranking_pools, updated_rank):
     2位以下のプールが上位のプールに移動する。よって、最下位プールが空になる
     空になったプールは、Betのロジックで別に補填ロジックを持つ
     """
+    global management_pay
     ranking_pools[updated_rank] = 0  # 更新されたランキングのプールをリセット
     if len(ranking_pools) != updated_rank + 1:
         for j in range(updated_rank, len(ranking_pools) - 1):
                 ranking_pools[j] = ranking_pools[j + 1]
-    ranking_pools[len(ranking_pools) - 1] = 0
+    ranking_pools[len(ranking_pools) - 1] = min_default_amount
+    management_pay += min_default_amount
     return ranking_pools
 
 def distribute_bet_to_pools(management_pool, ranking_pools, bet_amount):
@@ -190,6 +204,20 @@ def results_factory(results, num_columns):
     df = pd.DataFrame(results, columns=headers)
     return df
 
+def player_results_factory(results):
+    """
+    リスト形式のデータを受け取り、プレイヤーのbet金額と獲得金額を持つデータフレームを生成する。
+
+    :param results: リスト形式のデータ
+    :return: データフレーム
+    """
+    # ヘッダーを生成
+    headers = ['bet金額', '合計獲得金額', 'ランキング更新回数']
+
+    df = pd.DataFrame(results, columns=headers)
+    df['勝ち'] = df['bet金額'] < df['合計獲得金額']
+    return df
+
 def judge_player(ranking_pools, player_available, range_add_player):
     """
     先頭のlimit_num以下は無条件参加
@@ -236,7 +264,9 @@ def resize_pool(new_active_user_count):
     update_distribution()
 
 def add_pool_size():
-    ranking_pools.append(0)
+    global management_pay
+    ranking_pools.append(min_default_amount)
+    management_pay += 1
     current_ranking.append(0)
     count_update_ranking.append(0)
     ranking_distribution.append(0)
@@ -244,8 +274,10 @@ def add_pool_size():
 
 def update_distribution():
     global ranking_distribution
-    reward_distribution = getRewardDistribution(len(ranking_pools))
-    ranking_distribution = normalizeRewards(reward_distribution)
+    # reward_distribution = getRewardDistribution(len(ranking_pools))
+    # ranking_distribution = normalizeRewards(reward_distribution)
+    ranking_distribution = flexible_ranking_distribution.getRecursiveDistribution(len(ranking_pools))
+
 
 def find_first_false_index(my_dict):
     # 辞書の各要素（キーと値）を順番にチェック
@@ -313,13 +345,14 @@ for i in range(limit_num):
 
 # 開始人数に応じてプールの初期値を設定
 for i in range(int(limit_num * default_ranking_rate)):
-    ranking_pools.append(0)
+    ranking_pools.append(min_default_amount)
     current_ranking.append(0)
     count_update_ranking.append(0)
 
 # 分配率の初期値
-reward_distribution = getRewardDistribution(len(ranking_pools))
-ranking_distribution = normalizeRewards(reward_distribution)
+# reward_distribution = getRewardDistribution(len(ranking_pools))
+# ranking_distribution = normalizeRewards(reward_distribution)
+ranking_distribution = flexible_ranking_distribution.getRecursiveDistribution(len(ranking_pools))
 
 while sum(play_counter.values()) > 0:
     # playerの参加不参加を判定
@@ -336,6 +369,7 @@ while sum(play_counter.values()) > 0:
             # 運営プールとランキングプールへのBetの分配
             total_bet_amount += 1
             distribute_bet_to_pools(management_pool, ranking_pools, bet_amount)
+            player_result_win_lose[player_id][0] += 1
 
             # play回数の減算
             play_counter[player_id] = play_counter[player_id] - 1
@@ -371,6 +405,8 @@ while sum(play_counter.values()) > 0:
                         ranking, score, player_earning, player_id, total_bet_amount, previous_pools, current_ranking))
                     # sammary data
                     count_update_ranking[i] += 1
+                    player_result_win_lose[player_id][1] += player_earning
+                    player_result_win_lose[player_id][2] += 1
 
                     break
 
@@ -389,8 +425,12 @@ results = results_factory(results, len(ranking_pools))
 #output_path = Path("/mnt/data/simulation_results.tsv")
 output_path = Path("SimulationOutPut/playData_flexibleRanking_uu.csv")
 results.to_csv(output_path, index=False)
+player_lose_win_output_path = Path("SimulationOutPut/player_lose_win_uu.csv")
+player_result = player_results_factory(player_result_win_lose)
+player_result.to_csv(player_lose_win_output_path, index=True)
 
 output_path.resolve()
+player_lose_win_output_path.resolve()
 print("ranking num: " + str(len(count_update_ranking)))
 print("not join num: " + str(not_available_num))
 print("residue count: " + str(residue_play_count))
@@ -401,4 +441,5 @@ print("total_bet_amount: " + str(total_bet_amount))
 print("total_bet_amount * 0.9: " + str(total_bet_amount* 0.9))
 print("total_management_amount: " + str(total_bet_amount * management_distribution) + "$")
 print("ranking update unique user:" + str(len(set(update_ranking_user))))
-
+print("management_pay: " + str(management_pay))
+print("win_player_count: " + str(player_result.query('勝ち==True').count()))

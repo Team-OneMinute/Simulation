@@ -28,3 +28,9 @@ GamePlaySimulation_flexibleRanking_uu.py
 cd /Users/iwasakitakashidai/IdeaProjects/yearn/Simulation
 sh ./MakePlaySimulation.sh
 ```
+# tools
+- calculation telegram hash code
+  - add bot token on code
+```
+python3 LoginHashCalc
+```
